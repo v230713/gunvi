@@ -1,0 +1,63 @@
+ version: '2'
+
+ services:
+    web:
+     image: nginx:alpine
+     ports:
+         - "8080:80"
+     links:
+         - php
+     volumes:
+         - ./public_html:/public_html
+         - ./conf.d:/etc/nginx/conf.d
+     networks:
+         - nginxphp
+
+    php:
+#     image: php:7.1.11-fpm-alpine
+     build:
+        context: .
+        dockerfile: php/Dockerfile
+     links:
+       - mysql
+#     volumes:
+#         - ./public_html:/public_html
+#         - ./conf.d/php-fpm.conf:/usr/local/etc/
+     expose:
+         - 9000
+     networks:
+         - nginxphp
+
+    varnish:
+       build:
+          context: .
+          dockerfile: varnish/Dockerfile
+       ports:
+          - "80:80"
+       depends_on: 
+          - web
+       links:
+          - web
+       volumes:
+          - ./varnish/default.vcl:/etc/varnish/default.vcl
+       restart: unless-stopped
+       networks:
+         - nginxphp
+
+    mysql:
+       image: mysql:5.7
+       volumes:
+           - ./mysql/mysqld.cnf:/etc/mysql/mysql.conf.d/mysqld.cnf
+#       build:
+#          context: .
+#          dockerfile: mysql/Dockerfile
+       environment:
+        MYSQL_DATABASE: symfony 
+        MYSQL_ROOT_PASSWORD: root
+       ports:
+         - "3306:3306" 
+       networks:
+         - nginxphp
+
+ networks:
+    nginxphp:
